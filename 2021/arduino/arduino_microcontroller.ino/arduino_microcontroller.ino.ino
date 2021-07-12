@@ -42,8 +42,6 @@ const int PWM_INPUT_PIN_2 = 11;
 
 // ==================== */
 
-bool teleopState = false;
-
 // Configure the motor driver.
 // CytronMD motor(PWM_DIR, 12, 13);  // PWM = Pin 3, DIR = Pin 4.
 CytronMD motor1(PWM_DIR, PWM_OUTPUT_PIN_1, DIR_OUTPUT_PIN_1);
@@ -51,33 +49,76 @@ CytronMD motor2(PWM_DIR, PWM_OUTPUT_PIN_2, DIR_OUTPUT_PIN_2);
 
 
 enum ROBOT_STATE {
-  // Start of the loop nothing happens
+  // Start of the loop; waiting for input.
   // PARENT STATE: NONE | CHILD STATES: READ_TELEOP, READ_SERIAL
   INITIAL_STATE = 0,
-  // Read from fly sky reciever and parsing commands
+  
+  // Read from fly sky reciever and generate command.
   // PARENT STATE: INITIAL_STATE | CHILD STATES: RUN_COMMAND
   READ_TELEOP = 1,
-  // Reads and parses serial commands from the raspberry pi i.e. also check vision
+
+  // Reads and parses serial commands from the raspberry pi i.e. also check vision.
   // PARENT STATE: INITIAL_STATE | CHILD STATES: RUN_COMMAND
   READ_SERIAL = 2,
-  // Take input commands and output to motors
+
+  // Take input commands (3-character strings) and output to motors.
+  // The following commands are recognized:
+  // * Txx: Turns clockwise at rate xx.
+  //        xx == 0: Turn counterclockwise at full speed.
+  //        xx == 50: Stop turning.
+  //        xx == 99: Turn clockwise at full speed.
+  // * Dxx: Drive forward at rate xx.
+  //        xx == 0: Drive backwards at full speed.
+  //        xx == 50: Stop driving.
+  //        xx == 99: Drive forwards at full speed.
   // PARENT STATE: READ_TELEOP, READ_SERIAL | CHILD STATES: INITIAL_STATE
   RUN_COMMAND = 3;
 };
+
+// Tracks current state, global because it needs to persist beyond the end of loop().
+int state = INITIAL_STATE;
 
 // The setup routine runs once when you press reset.
 void setup() {
   Serial.begin(9600);
 }
 
+// reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
+float findCommandParameter(int inputPin) {
+  // We're expecting a duty cycle between 1000 and 2000 Hz.
+  unsigned long dutyCycleMicroSeconds = pulsein(inputPin, HIGH); 
+  unsigned long dutyCycleHz = 1e6 / dutyCycleMicroSeconds;
+
+  // Convert the input dutycycle into a parameter of interpolation.
+  const int PWM_MIN_DUTY_CYCLE_HZ = 1000;
+  const int PWM_MAX_DUTY_CYCLE_HZ = 2000;
+  float u = (dutyCycleHz - PWM_MIN_DUTY_CYCLE_HZ) / (PWM_MAX_DUTY_CYCLE_HZ - PWM_MIN_DUTY_CYCLE_HZ);
+
+  // Use the previous parameter of interpolation to calculate the rate at which the robot will drive or turn.
+  const int COMMAND_PARAMETER_MIN = 0;
+  const int COMMAND_PARAMETER_MAX = 99;
+  float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
+  return commandParameter;
+}
+
 // The loop routine runs over and over again forever.
 void loop() {
 
-  teleopState = false; // we want to have it default to no 
-  if (digitalRead(PWM_INPUT_PIN_1) || digitalRead(PWM_INPUT_PIN_2)) {
-    // we recieved a teleoperated signal
-    teleopState = true;
+  switch(state) {
+    case INITIAL_STATE:
+      // We're waiting for input here.
 
+      if (digitalRead(PWM_INPUT_PIN_1) || digitalRead(PWM_INPUT_PIN_2)) {
+        // We recieved a teleoperated signal and now trnaslate it into high level command.
+        
+      }
+      break;
+    case READ_TELEOP:
+      break;
+    case READ_SERIAL:
+      break;
+    case RUN_COMMAND:
+      break;
   }
 
   motor.setSpeed(128);  // Run forward at 50% speed.
