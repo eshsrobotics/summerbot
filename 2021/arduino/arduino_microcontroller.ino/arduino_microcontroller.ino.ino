@@ -37,8 +37,8 @@ const int DIR_OUTPUT_PIN_1 = 3;
 const int DIR_OUTPUT_PIN_2 = 6;
 
 // Inputs are coming from the reciever (fly sky something). 
-const int PWM_INPUT_PIN_1 = 8;
-const int PWM_INPUT_PIN_2 = 11;
+const int PWM_INPUT_HORIZONTAL = 8;
+const int PWM_INPUT_VERTICAL = 11;
 
 // ==================== */
 
