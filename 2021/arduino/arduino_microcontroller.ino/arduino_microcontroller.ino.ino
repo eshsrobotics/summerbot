@@ -26,6 +26,7 @@
  *******************************************************************************/
 
  #include "CytronMotorDriver.h"
+ #include <cstring>
 
 /* ===== PWM PINS ===== */
 
@@ -72,11 +73,18 @@ enum ROBOT_STATE {
   //        xx == 50: Stop driving.
   //        xx == 99: Drive forwards at full speed.
   // PARENT STATE: READ_TELEOP, READ_SERIAL | CHILD STATES: INITIAL_STATE
-  RUN_COMMAND = 3;
+  RUN_COMMAND = 3
 };
 
 // Tracks current state, global because it needs to persist beyond the end of loop().
 int state = INITIAL_STATE;
+
+
+// How fast the robot is driving fowards and backwards, from 0 - 99 
+int currentDriveParameter = 50;
+
+// How fast the robot is turning, from 0 - 99
+int currentTurnParameter = 50;
 
 // The setup routine runs once when you press reset.
 void setup() {
@@ -86,7 +94,7 @@ void setup() {
 // reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
 float findCommandParameter(int inputPin) {
   // We're expecting a duty cycle between 1000 and 2000 Hz.
-  unsigned long dutyCycleMicroSeconds = pulsein(inputPin, HIGH); 
+  unsigned long dutyCycleMicroSeconds = pulseIn(inputPin, HIGH); 
   unsigned long dutyCycleHz = 1e6 / dutyCycleMicroSeconds;
 
   // Convert the input dutycycle into a parameter of interpolation.
@@ -103,15 +111,22 @@ float findCommandParameter(int inputPin) {
 
 // The loop routine runs over and over again forever.
 void loop() {
-
+  
   switch(state) {
     case INITIAL_STATE:
-      // We're waiting for input here.
-
-      if (digitalRead(PWM_INPUT_PIN_1) || digitalRead(PWM_INPUT_PIN_2)) {
-        // We recieved a teleoperated signal and now trnaslate it into high level command.
-        
-      }
+      // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
+      // the human is toching the transmitter or not.  Only the pulse width
+      // can tell us this information.
+      currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
+      currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
+      char buffer[100];
+      snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
+      Serial.println(buffer);
+      if (currentDriveParameter != 50 || currentTurnParameter != 50) {
+        // The user hit the joystick.
+        Serial.println("Entered read_teleop");
+        state = READ_TELEOP;
+      }     
       break;
     case READ_TELEOP:
       break;
@@ -121,27 +136,27 @@ void loop() {
       break;
   }
 
-  motor.setSpeed(128);  // Run forward at 50% speed.
-  Serial.println("128");
-  delay(1000);
+  // motor.setSpeed(128);  // Run forward at 50% speed.
+  // Serial.println("128");
+  // delay(1000);
   
-  motor.setSpeed(255);  // Run forward at full speed.
-  Serial.println("255");
-  delay(1000);
+  // motor.setSpeed(255);  // Run forward at full speed.
+  // Serial.println("255");
+  // delay(1000);
 
-  motor.setSpeed(0);    // Stop.
-  Serial.println("0");
-  delay(1000);
+  // motor.setSpeed(0);    // Stop.
+  // Serial.println("0");
+  // delay(1000);
 
-  motor.setSpeed(-128);  // Run backward at 50% speed.
-  Serial.println("-128");
-  delay(1000);
+  // motor.setSpeed(-128);  // Run backward at 50% speed.
+  // Serial.println("-128");
+  // delay(1000);
   
-  motor.setSpeed(-255);  // Run backward at full speed.
-  Serial.println("-255");
-  delay(1000);
+  // motor.setSpeed(-255);  // Run backward at full speed.
+  // Serial.println("-255");
+  // delay(1000);
 
-  motor.setSpeed(0);    // Stop.
-  Serial.println("0");
-  delay(1000);
+  // motor.setSpeed(0);    // Stop.
+  // Serial.println("0");
+  // delay(1000);
 }
