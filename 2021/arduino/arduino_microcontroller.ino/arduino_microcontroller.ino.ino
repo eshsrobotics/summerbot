@@ -26,7 +26,7 @@
  *******************************************************************************/
 
  #include "CytronMotorDriver.h"
- #include <cstring>
+ //#include <cstring>
 
 /* ===== PWM PINS ===== */
 
@@ -122,6 +122,7 @@ void loop() {
       char buffer[100];
       snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
       Serial.println(buffer);
+      
       if (currentDriveParameter != 50 || currentTurnParameter != 50) {
         // The user hit the joystick.
         Serial.println("Entered read_teleop");
