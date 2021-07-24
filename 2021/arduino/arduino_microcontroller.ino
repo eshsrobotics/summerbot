@@ -9,10 +9,10 @@
  * This example shows how to drive a motor using the PWM and DIR pins.
  * This example only shows how to drive a single motor for simplicity.
  * For dual channel motor driver, both channel work the same way.
- * 
- * 
+ *
+ *
  * CONNECTIONS:
- * 
+ *
  * Arduino D3  - Motor Driver PWM Input
  * Arduino D4  - Motor Driver DIR Input
  * Arduino GND - Motor Driver GND
@@ -37,7 +37,7 @@ const int PWM_OUTPUT_PIN_2 = 5;
 const int DIR_OUTPUT_PIN_1 = 3;
 const int DIR_OUTPUT_PIN_2 = 6;
 
-// Inputs are coming from the reciever (fly sky something). 
+// Inputs are coming from the reciever (fly sky something).
 const int PWM_INPUT_HORIZONTAL = 8;
 const int PWM_INPUT_VERTICAL = 11;
 
@@ -53,7 +53,7 @@ enum ROBOT_STATE {
   // Start of the loop; waiting for input.
   // PARENT STATE: NONE | CHILD STATES: READ_TELEOP, READ_SERIAL
   INITIAL_STATE = 0,
-  
+
   // Read from fly sky reciever and generate command.
   // PARENT STATE: INITIAL_STATE | CHILD STATES: RUN_COMMAND
   READ_TELEOP = 1,
@@ -80,7 +80,7 @@ enum ROBOT_STATE {
 int state = INITIAL_STATE;
 
 
-// How fast the robot is driving fowards and backwards, from 0 - 99 
+// How fast the robot is driving fowards and backwards, from 0 - 99
 int currentDriveParameter = 50;
 
 // How fast the robot is turning, from 0 - 99
@@ -93,16 +93,34 @@ void setup() {
 
 // reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
 float findCommandParameter(int inputPin) {
-  // We're expecting a duty cycle between 1000 and 2000 Hz.
-  unsigned long dutyCycleMicroSeconds = pulseIn(inputPin, HIGH); 
-  unsigned long dutyCycleHz = 1e6 / dutyCycleMicroSeconds;
+  // We're expecting a pulse width between 1/1000Hz = 1000μs and 1/2000Hz =
+  // 500μs.
+  unsigned long pulseWidthMicroSeconds = pulseIn(inputPin, HIGH);
 
-  // Convert the input dutycycle into a parameter of interpolation.
-  const int PWM_MIN_DUTY_CYCLE_HZ = 1000;
-  const int PWM_MAX_DUTY_CYCLE_HZ = 2000;
-  float u = (dutyCycleHz - PWM_MIN_DUTY_CYCLE_HZ) / (PWM_MAX_DUTY_CYCLE_HZ - PWM_MIN_DUTY_CYCLE_HZ);
+  // An integer division should be fine for the frequency -- we don't need
+  // fine granularity here.
+  int frequencyHz = 1e6 / pulseWidthMicroSeconds;
 
-  // Use the previous parameter of interpolation to calculate the rate at which the robot will drive or turn.
+  // Convert the input frequency into a parameter of interpolation.  0 <= u <=
+  // 1, *if* the PWM signal corresponds to the pulse width above.
+  //
+  // - If the frequency is less than PWM_MIN_FREQUENCY_HZ, then u will be
+  //   less than 0.
+  //
+  // - If the frequency is great than PWM_MAX_PULSE_WIDTH_US, then u will be
+  //   greater than 1.
+  //
+  // It is important that we work in the non-linear frequency domain here.
+  // We'll get subtle errors if we work in the time domain
+  // ("PWM_MIN_PULSE_WIDTH_US").
+  const int PWM_MIN_FREQUENCY_HZ = 1000;
+  const int PWM_MAX_FREQUENCY_HZ = 2000;
+  float u = float(frequencyHz - PWM_MIN_FREQUENCY_HZ) / (PWM_MAX_FREQUENCY_HZ - PWM_MIN_FREQUENCY_HZ);
+
+  // TODO: Add joystick deadzone around u==0.5 (theoretical dead center.)
+
+  // Use the previous parameter of interpolation to calculate the rate at
+  // which the robot will drive or turn.
   const int COMMAND_PARAMETER_MIN = 0;
   const int COMMAND_PARAMETER_MAX = 99;
   float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
@@ -111,7 +129,7 @@ float findCommandParameter(int inputPin) {
 
 // The loop routine runs over and over again forever.
 void loop() {
-  
+
   switch(state) {
     case INITIAL_STATE:
       // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
@@ -122,12 +140,12 @@ void loop() {
       char buffer[100];
       snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
       Serial.println(buffer);
-      
+
       if (currentDriveParameter != 50 || currentTurnParameter != 50) {
         // The user hit the joystick.
         Serial.println("Entered read_teleop");
         state = READ_TELEOP;
-      }     
+      }
       break;
     case READ_TELEOP:
       break;
@@ -140,7 +158,7 @@ void loop() {
   // motor.setSpeed(128);  // Run forward at 50% speed.
   // Serial.println("128");
   // delay(1000);
-  
+
   // motor.setSpeed(255);  // Run forward at full speed.
   // Serial.println("255");
   // delay(1000);
@@ -152,7 +170,7 @@ void loop() {
   // motor.setSpeed(-128);  // Run backward at 50% speed.
   // Serial.println("-128");
   // delay(1000);
-  
+
   // motor.setSpeed(-255);  // Run backward at full speed.
   // Serial.println("-255");
   // delay(1000);
