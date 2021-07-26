@@ -89,13 +89,27 @@ int currentTurnParameter = 50;
 // The setup routine runs once when you press reset.
 void setup() {
   Serial.begin(9600);
+  pinMode(2, OUTPUT);
+  pinMode(PWM_INPUT_HORIZONTAL, INPUT);
+  pinMode(PWM_INPUT_VERTICAL, INPUT);
+  pinMode(PWM_OUTPUT_PIN_1, OUTPUT);
+  pinMode(PWM_OUTPUT_PIN_2, OUTPUT);
+  pinMode(DIR_OUTPUT_PIN_1, OUTPUT);
+  pinMode(DIR_OUTPUT_PIN_2, OUTPUT);
 }
 
 // reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
 float findCommandParameter(int inputPin) {
-  // We're expecting a pulse width between 1/1000Hz = 1000μs and 1/2000Hz =
-  // 500μs.
+  // We're expecting a pulse width between 1/1000Hz = 1000μs and 1/500Hz =
+  // 2000μs.
   unsigned long pulseWidthMicroSeconds = pulseIn(inputPin, HIGH);
+
+  if (pulseWidthMicroSeconds == 0) {
+    // No complete pulse detected within the time period.
+    // Returning the most neutral number possible.
+    return 50;
+    
+  }
 
   // An integer division should be fine for the frequency -- we don't need
   // fine granularity here.
@@ -113,19 +127,27 @@ float findCommandParameter(int inputPin) {
   // It is important that we work in the non-linear frequency domain here.
   // We'll get subtle errors if we work in the time domain
   // ("PWM_MIN_PULSE_WIDTH_US").
-  const int PWM_MIN_FREQUENCY_HZ = 1000;
-  const int PWM_MAX_FREQUENCY_HZ = 2000;
-  float u = float(frequencyHz - PWM_MIN_FREQUENCY_HZ) / (PWM_MAX_FREQUENCY_HZ - PWM_MIN_FREQUENCY_HZ);
+  const int PWM_MIN_FREQUENCY_HZ = 418;
+  const int PWM_MAX_FREQUENCY_HZ = 850;
+  // float u = float(frequencyHz - PWM_MIN_FREQUENCY_HZ) / (PWM_MAX_FREQUENCY_HZ - PWM_MIN_FREQUENCY_HZ);
 
   // TODO: Add joystick deadzone around u==0.5 (theoretical dead center.)
+  // const int PWM_DEADZONE_FREQUENCY = 
 
   // Use the previous parameter of interpolation to calculate the rate at
   // which the robot will drive or turn.
   const int COMMAND_PARAMETER_MIN = 0;
-  const int COMMAND_PARAMETER_MAX = 99;
-  float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
+  const int COMMAND_PARAMETER_MAX = 99;  
+  float commandParameter = map(frequencyHz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ, COMMAND_PARAMETER_MIN, COMMAND_PARAMETER_MAX);   
+  // float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
+
+  char buffer[100];
+  snprintf(buffer, 100, "Current teleop parameters: Freq: %d Hz, Pulse width: %ld us -> D%02d, T%02d", frequencyHz, pulseWidthMicroSeconds, currentDriveParameter, currentTurnParameter);
+  //Serial.println(buffer);
+
   return commandParameter;
 }
+
 
 // The loop routine runs over and over again forever.
 void loop() {
@@ -135,16 +157,17 @@ void loop() {
       // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
       // the human is toching the transmitter or not.  Only the pulse width
       // can tell us this information.
-      currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
+      // currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
       currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
+      
       char buffer[100];
       snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
       Serial.println(buffer);
 
       if (currentDriveParameter != 50 || currentTurnParameter != 50) {
         // The user hit the joystick.
-        Serial.println("Entered read_teleop");
-        state = READ_TELEOP;
+        // Serial.println("Entered read_teleop");
+        // state = READ_TELEOP;
       }
       break;
     case READ_TELEOP:
@@ -177,5 +200,5 @@ void loop() {
 
   // motor.setSpeed(0);    // Stop.
   // Serial.println("0");
-  // delay(1000);
+  delay(200);
 }
