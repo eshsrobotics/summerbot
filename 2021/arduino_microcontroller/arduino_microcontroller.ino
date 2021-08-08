@@ -100,15 +100,21 @@ void setup() {
 
 // reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
 float findCommandParameter(int inputPin) {
-  // We're expecting a pulse width between 1/1000Hz = 1000μs and 1/500Hz =
-  // 2000μs.
+  // We're expecting a pulse width between 1000μs and 2000μs.
   unsigned long pulseWidthMicroSeconds = pulseIn(inputPin, HIGH);
 
   if (pulseWidthMicroSeconds == 0) {
     // No complete pulse detected within the time period.
     // Returning the most neutral number possible.
-    return 50;
-    
+    return 50; 
+  }
+
+  const unsigned long deadzoneThresholdMicroseconds = 100;
+  const unsigned long centerPulseWidthMicroseconds = 1500;
+
+  if (pulseWidthMicroSeconds < centerPulseWidthMicroseconds + deadzoneThresholdMicroseconds && 
+      pulseWidthMicroSeconds > centerPulseWidthMicroseconds - deadzoneThresholdMicroseconds) {
+    pulseWidthMicroSeconds = centerPulseWidthMicroseconds;
   }
 
   // An integer division should be fine for the frequency -- we don't need
@@ -127,23 +133,39 @@ float findCommandParameter(int inputPin) {
   // It is important that we work in the non-linear frequency domain here.
   // We'll get subtle errors if we work in the time domain
   // ("PWM_MIN_PULSE_WIDTH_US").
-  const int PWM_MIN_FREQUENCY_HZ = 418;
-  const int PWM_MAX_FREQUENCY_HZ = 850;
-  // float u = float(frequencyHz - PWM_MIN_FREQUENCY_HZ) / (PWM_MAX_FREQUENCY_HZ - PWM_MIN_FREQUENCY_HZ);
+  int PWM_MIN_PULSE_WIDTH_US = 1000;
+  int PWM_MAX_PULSE_WIDTH_US = 2000;
+  if (inputPin == PWM_INPUT_HORIZONTAL) {
+    // Based on the observation that the horizontal channel (channel 1) behaves differently than the vertical channel (channel 2)
+    PWM_MIN_PULSE_WIDTH_US = 1500;
+    PWM_MAX_PULSE_WIDTH_US = 3000;
+  }
+
+  float u = float(pulseWidthMicroSeconds - PWM_MIN_PULSE_WIDTH_US) / (PWM_MAX_PULSE_WIDTH_US - PWM_MIN_PULSE_WIDTH_US);
 
   // TODO: Add joystick deadzone around u==0.5 (theoretical dead center.)
   // const int PWM_DEADZONE_FREQUENCY = 
+
+  // This is a clamp which will make sure if the value of u (which determines motor speed) is a number that we cannot use (higher than 1 or lower than 0)
+  // that it will be set to a value which we can use
+  if (u < 0) {
+    u = 0;
+  }
+  if (u > 1) {
+    u = 1;
+  }
 
   // Use the previous parameter of interpolation to calculate the rate at
   // which the robot will drive or turn.
   const int COMMAND_PARAMETER_MIN = 0;
   const int COMMAND_PARAMETER_MAX = 99;  
-  float commandParameter = map(frequencyHz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ, COMMAND_PARAMETER_MIN, COMMAND_PARAMETER_MAX);   
-  // float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
+  // float commandParameter = map(frequencyHz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ, COMMAND_PARAMETER_MIN, COMMAND_PARAMETER_MAX);   
+  float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
 
   char buffer[100];
-  snprintf(buffer, 100, "Current teleop parameters: Freq: %d Hz, Pulse width: %ld us -> D%02d, T%02d", frequencyHz, pulseWidthMicroSeconds, currentDriveParameter, currentTurnParameter);
-  //Serial.println(buffer);
+  snprintf(buffer, 100, "Current teleop parameters: Freq: %d Hz, Pulse width: %ld us -> u=%.2f, param=%02f", frequencyHz, pulseWidthMicroSeconds, u, commandParameter);
+  
+  Serial.println(buffer);
 
   return commandParameter;
 }
@@ -162,7 +184,7 @@ void loop() {
       
       char buffer[100];
       snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
-      Serial.println(buffer);
+      // Serial.println(buffer);
 
       if (currentDriveParameter != 50 || currentTurnParameter != 50) {
         // The user hit the joystick.
