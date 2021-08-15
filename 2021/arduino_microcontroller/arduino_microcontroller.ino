@@ -109,14 +109,6 @@ float findCommandParameter(int inputPin) {
     return 50; 
   }
 
-  const unsigned long deadzoneThresholdMicroseconds = 100;
-  const unsigned long centerPulseWidthMicroseconds = 1500;
-
-  if (pulseWidthMicroSeconds < centerPulseWidthMicroseconds + deadzoneThresholdMicroseconds && 
-      pulseWidthMicroSeconds > centerPulseWidthMicroseconds - deadzoneThresholdMicroseconds) {
-    pulseWidthMicroSeconds = centerPulseWidthMicroseconds;
-  }
-
   // An integer division should be fine for the frequency -- we don't need
   // fine granularity here.
   int frequencyHz = 1e6 / pulseWidthMicroSeconds;
@@ -133,18 +125,24 @@ float findCommandParameter(int inputPin) {
   // It is important that we work in the non-linear frequency domain here.
   // We'll get subtle errors if we work in the time domain
   // ("PWM_MIN_PULSE_WIDTH_US").
-  int PWM_MIN_PULSE_WIDTH_US = 1000;
-  int PWM_MAX_PULSE_WIDTH_US = 2000;
+  int PWM_MIN_PULSE_WIDTH_US = 1300;
+  int PWM_MAX_PULSE_WIDTH_US = 2500;
   if (inputPin == PWM_INPUT_HORIZONTAL) {
     // Based on the observation that the horizontal channel (channel 1) behaves differently than the vertical channel (channel 2)
-    PWM_MIN_PULSE_WIDTH_US = 1500;
-    PWM_MAX_PULSE_WIDTH_US = 3000;
+    PWM_MIN_PULSE_WIDTH_US = 1078;
+    PWM_MAX_PULSE_WIDTH_US = 2253;
   }
 
-  float u = float(pulseWidthMicroSeconds - PWM_MIN_PULSE_WIDTH_US) / (PWM_MAX_PULSE_WIDTH_US - PWM_MIN_PULSE_WIDTH_US);
+  // dd joystick deadzone around u==0.5 (theoretical dead center.)
+  const unsigned long deadzoneThresholdMicroseconds = 100;
+  const unsigned long centerPulseWidthMicroseconds = (PWM_MAX_PULSE_WIDTH_US + PWM_MIN_PULSE_WIDTH_US) / 2;
 
-  // TODO: Add joystick deadzone around u==0.5 (theoretical dead center.)
-  // const int PWM_DEADZONE_FREQUENCY = 
+  if (pulseWidthMicroSeconds < centerPulseWidthMicroseconds + deadzoneThresholdMicroseconds && 
+      pulseWidthMicroSeconds > centerPulseWidthMicroseconds - deadzoneThresholdMicroseconds) {
+    pulseWidthMicroSeconds = centerPulseWidthMicroseconds;
+  }
+
+  float u = float(long(pulseWidthMicroSeconds) - PWM_MIN_PULSE_WIDTH_US) / (PWM_MAX_PULSE_WIDTH_US - PWM_MIN_PULSE_WIDTH_US);
 
   // This is a clamp which will make sure if the value of u (which determines motor speed) is a number that we cannot use (higher than 1 or lower than 0)
   // that it will be set to a value which we can use
@@ -164,8 +162,8 @@ float findCommandParameter(int inputPin) {
 
   char buffer[100];
   snprintf(buffer, 100, "Current teleop parameters: Freq: %d Hz, Pulse width: %ld us -> u=%.2f, param=%02f", frequencyHz, pulseWidthMicroSeconds, u, commandParameter);
-  
   Serial.println(buffer);
+
 
   return commandParameter;
 }
@@ -175,16 +173,20 @@ float findCommandParameter(int inputPin) {
 void loop() {
 
   switch(state) {
-    case INITIAL_STATE:
+    case INITIAL_STATE: {
       // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
       // the human is toching the transmitter or not.  Only the pulse width
       // can tell us this information.
-      // currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
-      currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
+      int currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
+      int currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
       
       char buffer[100];
-      snprintf(buffer, 100, "Current teleop parameters: D%02d, T%02d", currentDriveParameter, currentTurnParameter);
-      // Serial.println(buffer);
+      snprintf(buffer, 100, "Current teleop parameters: D%02f (%02d), T%02f (%02d)", 
+        (float)currentDriveParameter,
+        currentDriveParameter, 
+        (float)currentTurnParameter,
+        currentTurnParameter);
+      Serial.println(buffer);
 
       if (currentDriveParameter != 50 || currentTurnParameter != 50) {
         // The user hit the joystick.
@@ -192,6 +194,7 @@ void loop() {
         // state = READ_TELEOP;
       }
       break;
+    }      
     case READ_TELEOP:
       break;
     case READ_SERIAL:
@@ -222,5 +225,5 @@ void loop() {
 
   // motor.setSpeed(0);    // Stop.
   // Serial.println("0");
-  delay(200);
+  delay(400);
 }
