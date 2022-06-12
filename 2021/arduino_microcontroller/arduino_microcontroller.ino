@@ -25,8 +25,8 @@
  *
  *******************************************************************************/
 
- #include "CytronMotorDriver.h"
- //#include <cstring>
+#include "CytronMotorDriver.h"
+//#include <cstring>
 
 /* ===== PWM PINS ===== */
 
@@ -38,8 +38,9 @@ const int DIR_OUTPUT_PIN_1 = 3;
 const int DIR_OUTPUT_PIN_2 = 6;
 
 // Inputs are coming from the reciever (fly sky something).
-const int PWM_INPUT_HORIZONTAL = 8;
-const int PWM_INPUT_VERTICAL = 11;
+const int PWM_INPUT_HORIZONTAL = 8;  // Blue wire
+const int PWM_INPUT_VERTICAL = 11;   // White wire
+
 
 // ==================== */
 
@@ -98,7 +99,7 @@ void setup() {
   pinMode(DIR_OUTPUT_PIN_2, OUTPUT);
 }
 
-// reads the pin, which has a PWM signal, scale it down from a number between 1000 and 200, and then turns it into a value between 0-99.
+// reads the pin, which has a PWM signal, scale it down from a number between 1000 and 2000, and then turns it into a value between 0-99.
 float findCommandParameter(int inputPin) {
   // We're expecting a pulse width between 1000μs and 2000μs.
   unsigned long pulseWidthMicroSeconds = pulseIn(inputPin, HIGH);
@@ -106,7 +107,7 @@ float findCommandParameter(int inputPin) {
   if (pulseWidthMicroSeconds == 0) {
     // No complete pulse detected within the time period.
     // Returning the most neutral number possible.
-    return 50; 
+    return 50;
   }
 
   // An integer division should be fine for the frequency -- we don't need
@@ -134,13 +135,12 @@ float findCommandParameter(int inputPin) {
   }
 
   // dd joystick deadzone around u==0.5 (theoretical dead center.)
-  const unsigned long deadzoneThresholdMicroseconds = 100;
-  const unsigned long centerPulseWidthMicroseconds = (PWM_MAX_PULSE_WIDTH_US + PWM_MIN_PULSE_WIDTH_US) / 2;
+  // const unsigned long deadzoneThresholdMicroseconds = 100;
+  // const unsigned long centerPulseWidthMicroseconds = (PWM_MAX_PULSE_WIDTH_US + PWM_MIN_PULSE_WIDTH_US) / 2;
 
-  if (pulseWidthMicroSeconds < centerPulseWidthMicroseconds + deadzoneThresholdMicroseconds && 
-      pulseWidthMicroSeconds > centerPulseWidthMicroseconds - deadzoneThresholdMicroseconds) {
-    pulseWidthMicroSeconds = centerPulseWidthMicroseconds;
-  }
+  // if (pulseWidthMicroSeconds < centerPulseWidthMicroseconds + deadzoneThresholdMicroseconds && pulseWidthMicroSeconds > centerPulseWidthMicroseconds - deadzoneThresholdMicroseconds) {
+  //   pulseWidthMicroSeconds = centerPulseWidthMicroseconds;
+  // }
 
   float u = float(long(pulseWidthMicroSeconds) - PWM_MIN_PULSE_WIDTH_US) / (PWM_MAX_PULSE_WIDTH_US - PWM_MIN_PULSE_WIDTH_US);
 
@@ -153,16 +153,22 @@ float findCommandParameter(int inputPin) {
     u = 1;
   }
 
+  // Deadband calculation
+  const float DEADZONE_THRESHOLD = 0.18;
+  if (u < 0.5 + DEADZONE_THRESHOLD && u > 0.5 - DEADZONE_THRESHOLD) {
+    u = 0.5;
+  }
+
   // Use the previous parameter of interpolation to calculate the rate at
   // which the robot will drive or turn.
   const int COMMAND_PARAMETER_MIN = 0;
-  const int COMMAND_PARAMETER_MAX = 99;  
-  // float commandParameter = map(frequencyHz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ, COMMAND_PARAMETER_MIN, COMMAND_PARAMETER_MAX);   
+  const int COMMAND_PARAMETER_MAX = 99;
+  // float commandParameter = map(frequencyHz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ, COMMAND_PARAMETER_MIN, COMMAND_PARAMETER_MAX);
   float commandParameter = COMMAND_PARAMETER_MIN + u * (COMMAND_PARAMETER_MAX - COMMAND_PARAMETER_MIN);
 
   char buffer[100];
   snprintf(buffer, 100, "Current teleop parameters: Freq: %d Hz, Pulse width: %ld us -> u=%.2f, param=%02f", frequencyHz, pulseWidthMicroSeconds, u, commandParameter);
-  Serial.println(buffer);
+  // Serial.println(buffer);
 
 
   return commandParameter;
@@ -172,29 +178,30 @@ float findCommandParameter(int inputPin) {
 // The loop routine runs over and over again forever.
 void loop() {
 
-  switch(state) {
-    case INITIAL_STATE: {
-      // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
-      // the human is toching the transmitter or not.  Only the pulse width
-      // can tell us this information.
-      int currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
-      int currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
-      
-      char buffer[100];
-      snprintf(buffer, 100, "Current teleop parameters: D%02f (%02d), T%02f (%02d)", 
-        (float)currentDriveParameter,
-        currentDriveParameter, 
-        (float)currentTurnParameter,
-        currentTurnParameter);
-      Serial.println(buffer);
+  switch (state) {
+    case INITIAL_STATE:
+      {
+        // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
+        // the human is touching the transmitter or not.  Only the pulse width
+        // can tell us this information.
+        int currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
+        int currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
 
-      if (currentDriveParameter != 50 || currentTurnParameter != 50) {
-        // The user hit the joystick.
-        // Serial.println("Entered read_teleop");
-        // state = READ_TELEOP;
+        char buffer[100];
+        snprintf(buffer, 100, "Current teleop parameters: D%02f (%02d), T%02f (%02d)",
+                 (float)currentDriveParameter,
+                 currentDriveParameter,
+                 (float)currentTurnParameter,
+                 currentTurnParameter);
+        Serial.println(buffer);
+
+        if (currentDriveParameter != 50 || currentTurnParameter != 50) {
+          // The user hit the joystick.
+          // Serial.println("Entered read_teleop");
+          // state = READ_TELEOP;
+        }
+        break;
       }
-      break;
-    }      
     case READ_TELEOP:
       break;
     case READ_SERIAL:

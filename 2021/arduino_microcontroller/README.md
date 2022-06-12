@@ -1,3 +1,14 @@
+h1. 2021-2022 SUMMERBOT PROJECT: Arduino Code
+
+Purpose
+=======
+
+The Summerbot is two computers in one.  The main computer responsible for
+driving is an Arduino Due.  A realtime microcontroller like the Arduino is
+necessary because PWM signals are time-sensitive and should not be preempted.
+We selected the Due because it has 32 KB of program space compared to the
+Arduino Uno's 2 KB.  More space means bigger sketches.
+
 Wiring for summerbot
 ====================
 
