@@ -11,14 +11,14 @@ Wiring for summerbot
 		1. Channel 1 (blue wire) is signal for right stick horizontal
 		2. Channel 2 (white wire) is signal for right stick vertical
 	- Middle pin for VCC (red wire) to 5V pin on Arduino
-	
-![FS-iA6B pinout](http://rcsearch.ru/w/images/thumb/b/bb/FlySky_IA6B_pinout.jpg/500px-FlySky_IA6B_pinout.jpg)
+
+![FS-iA6B pinout](./500px-FlySky_IA6B_pinout.jpg)
 
 2. PWM INPUT PINS
 	- PWM input pin horizontal (blue wire) goes to arduino plugin 8
 	- PWM input pin vertical (white wire) goes to arduino plugin 11
-	
-	
+
+
 Arcade drive formulas
 =====================
 
@@ -27,7 +27,7 @@ Arcade drive formulas
 
     ```c++
         /* FWD is the Forward commandRCW is the Rotate Clockwise command*/
-        max = fabs(FWD); 
+        max = fabs(FWD);
     	if (fabs(RCW)>max) max = fabs(RCW);
     	sum = FWD+RCW;
     	dif = FWD-RCW;
@@ -37,9 +37,9 @@ Arcade drive formulas
     	  if(RCW>=0) { L = sum; R = -max; }else { L = -max; R = dif; }
     	}
     ```
-	
+
     Translated into more readable pseudocode, we have:
-	
+
 	```
 	    # Turn and Drive are numbers between -100% and 100%.
 		# A drive of +100% drives forward at full speed.
@@ -67,8 +67,7 @@ Arcade drive formulas
 	|| Drive || Turn || Left || Right ||
 	| 0 | 0 | 0 | 0 |
 	| 25% | 0% | 25% | 25% |
-	| 0% | -25% | -25% | 25% | 
+	| 0% | -25% | -25% | 25% |
 	| +50% | +50% | +50% | 0% |
 	| +50% | +100% | +100% | -50% |
 	| -100% | 50% | -50% | -100% |
-	
