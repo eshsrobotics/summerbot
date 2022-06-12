@@ -26,6 +26,8 @@
  *******************************************************************************/
 
 #include "CytronMotorDriver.h"
+#include <utility>
+#include <algorithm>
 //#include <cstring>
 
 /* ===== PWM PINS ===== */
@@ -41,6 +43,10 @@ const int DIR_OUTPUT_PIN_2 = 6;
 const int PWM_INPUT_HORIZONTAL = 8;  // Blue wire
 const int PWM_INPUT_VERTICAL = 11;   // White wire
 
+using std::pair;
+using std::make_pair;
+using std::max;
+using std::abs;
 
 // ==================== */
 
@@ -56,11 +62,11 @@ enum ROBOT_STATE {
   INITIAL_STATE = 0,
 
   // Read from fly sky reciever and generate command.
-  // PARENT STATE: INITIAL_STATE | CHILD STATES: RUN_COMMAND
+  // PARENT STATE: INITIAL_STATE | CHILD STATES: CHANGE_HEADING
   READ_TELEOP = 1,
 
   // Reads and parses serial commands from the raspberry pi i.e. also check vision.
-  // PARENT STATE: INITIAL_STATE | CHILD STATES: RUN_COMMAND
+  // PARENT STATE: INITIAL_STATE | CHILD STATES: CHANGE_HEADING
   READ_SERIAL = 2,
 
   // Take input commands (3-character strings) and output to motors.
@@ -74,18 +80,25 @@ enum ROBOT_STATE {
   //        xx == 50: Stop driving.
   //        xx == 99: Drive forwards at full speed.
   // PARENT STATE: READ_TELEOP, READ_SERIAL | CHILD STATES: INITIAL_STATE
-  RUN_COMMAND = 3
+  RUN_COMMAND = 3,
+
+  // Changes the speed of the left and right drive motors
+  // PARENT STATE: READ_TELEOP, READ_SERIAL | CHILD STATES: INITIAL_STATE
+  CHANGE_HEADING = 4
 };
 
 // Tracks current state, global because it needs to persist beyond the end of loop().
 int state = INITIAL_STATE;
-
 
 // How fast the robot is driving fowards and backwards, from 0 - 99
 int currentDriveParameter = 50;
 
 // How fast the robot is turning, from 0 - 99
 int currentTurnParameter = 50;
+
+// The speeds of the left and right motors, the range is -100 to 100
+int leftSpeed = 0;
+int rightSpeed = 0;
 
 // The setup routine runs once when you press reset.
 void setup() {
@@ -174,39 +187,73 @@ float findCommandParameter(int inputPin) {
   return commandParameter;
 }
 
+// Returns two integers in a pair, in the order (left motor value, right motor value)
+// Inputs are the drive value and the turn value from the joystick
+pair<int, int> arcadeDrive(int drive, int turn) {
+  // Finds the maximum of the absolute values of the two inputs
+  int maximum = max(abs(drive), abs(turn));
+  // Finds the sum and differnce of the inputs
+  int sum = drive + turn;
+  int difference = drive - turn;
+  if (drive >= 0) {
+    if (turn >= 0) {
+      // If drive and turn are positive, the maximum and the difference are returned
+      return make_pair(maximum, difference);
+    } else {
+      // If drive is positive and turn is negative, the sum and maximum are returned
+      return make_pair(sum, maximum);
+    }
+  } else {
+    if (turn >= 0) {
+      // If drive is negative and turn is positive, the sum and negative maximum are returned
+      return make_pair(sum, -maximum);
+    } else {
+      // If drive and turn are negative, the negative maximum and the difference are returned
+      return make_pair(-maximum, difference);
+    }
+  }
+}
 
 // The loop routine runs over and over again forever.
 void loop() {
 
   switch (state) {
-    case INITIAL_STATE:
-      {
-        // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
-        // the human is touching the transmitter or not.  Only the pulse width
-        // can tell us this information.
-        int currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
-        int currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
+    case INITIAL_STATE: {
+      // We ALWAYS receive a PWM signal from the FS-iA6B receiver, whether
+      // the human is touching the transmitter or not.  Only the pulse width
+      // can tell us this information.
+      int currentTurnParameter = int(findCommandParameter(PWM_INPUT_HORIZONTAL));
+      int currentDriveParameter = int(findCommandParameter(PWM_INPUT_VERTICAL));
 
-        char buffer[100];
-        snprintf(buffer, 100, "Current teleop parameters: D%02f (%02d), T%02f (%02d)",
-                 (float)currentDriveParameter,
-                 currentDriveParameter,
-                 (float)currentTurnParameter,
-                 currentTurnParameter);
-        Serial.println(buffer);
+      char buffer[100];
+      snprintf(buffer, 100, "Current teleop parameters: D%02f (%02d), T%02f (%02d)",
+                (float)currentDriveParameter,
+                currentDriveParameter,
+                (float)currentTurnParameter,
+                currentTurnParameter);
+      Serial.println(buffer);
 
-        if (currentDriveParameter != 50 || currentTurnParameter != 50) {
-          // The user hit the joystick.
-          // Serial.println("Entered read_teleop");
-          // state = READ_TELEOP;
-        }
-        break;
+      if (currentDriveParameter != 49 || currentTurnParameter != 49) {
+        // The user hit the joystick.
+        // THIS CODE CAUSES A BUG
+        // The pulseIn function is time-sensitive, and because this code takes time to run,
+        // it is causing the joystick values to change dramatically.
+        // We do not know how to fix this yet.
+        // Serial.println("Entered read_teleop");
+        // state = READ_TELEOP;
       }
-    case READ_TELEOP:
       break;
+    }
+    case READ_TELEOP: {
+      auto p = arcadeDrive(currentDriveParameter, currentTurnParameter);
+      leftSpeed = (p.first - 49) * 2;
+      rightSpeed = (p.second - 49) * 2;
+      state = CHANGE_HEADING;
+      break;
+    }
     case READ_SERIAL:
       break;
-    case RUN_COMMAND:
+    case CHANGE_HEADING:
       break;
   }
 
