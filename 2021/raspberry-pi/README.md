@@ -8,8 +8,7 @@
 Installation & Running
 ----------------------
 1. Visit https://www.python.org/downloads/release/python-3105/ and download a python installer.
-    - On school computers, download _Windows embeddable package (64-bit)_.  You may need to decompress this ZIP
-	    file and place it in your `PATH%`.
+    - On school computers, download the Windows installer (64-bit) file .
 2. Run `pip3 install -r requirements.txt`.
 3. To run the code, type `python3 code.py`.
 
