@@ -6,17 +6,11 @@ import numpy as np
 import cv2 as cv
 import cv2.aruco as aruco
 
-
-# # Select a marker from the predefined dictionary and save it to a file.
-
-# img = cv.imread('marker23.png')
-
-# corners, ids, rejectedImgpoints = aruco.detectMarkers(img, ARU_DICT, parameters=ARU_PARAM)
-
-# print(f"Marker IDs detected: {ids}")
-
-
-
+ARU_PIXEL_SIZE = 300  # This number is the size of the marker image in pixels.
+ARU_BORDER_WIDTH = 1 # This is the width of the border (TODO: is this in pixels or grid cells?)
+# In order for aruco to work, we need to find the predefined dictionary.
+ARU_DICT = aruco.Dictionary_get(aruco.DICT_4X4_50)
+ARU_PARAM = aruco.DetectorParameters_create()
 
 # px = img [0,0]
 # print(px)
@@ -50,6 +44,9 @@ def parse_arguments():
             exit(1)
         generate_aruco_marker(marker_id=arg_list.generate, file_name=arg_list.output)
         print(f"Wrote \"{arg_list.output}\"")
+    
+    elif arg_list.test is not None:
+        detect_all_markers(arg_list.test)
     else:
         # -g was not passed in, so -o is an error.
         if arg_list.output:
@@ -64,15 +61,22 @@ def generate_aruco_marker(marker_id, file_name):
     - marker_id: This is the ID of the Aruco Marker to generate from DICT_4X4_50.
     - file_name: This is the name of the file which has the marker saved into it.
     """
-    ARU_PIXEL_SIZE = 300  # This number is the size of the marker image in pixels.
-    ARU_BORDER_WIDTH = 1 # This is the width of the border (TODO: is this in pixels or grid cells?)
-    # In order for aruco to work, we need to find the predefined dictionary.
-    ARU_DICT = aruco.Dictionary_get(aruco.DICT_4X4_50)
-    ARU_PARAM = aruco.DetectorParameters_create()
-
     # Writing the image for disk.
     marker_image = aruco.drawMarker(ARU_DICT, marker_id, ARU_PIXEL_SIZE)
     cv.imwrite(file_name, marker_image)
+
+def detect_all_markers(image_file_name):
+    """
+    Detects all the AruCo markers in the image, and returns the Marker ID and also the 
+    three-dimensional space of the marker.
+    """
+    # Select a marker from the predefined dictionary and save it to a file.
+
+    img = cv.imread(image_file_name)
+
+    corners, ids, rejectedImgpoints = aruco.detectMarkers(img, ARU_DICT, parameters=ARU_PARAM)
+
+    print(f"Marker IDs detected: {ids}")
 
 if __name__ == "__main__":
     parse_arguments()
