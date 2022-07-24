@@ -26,19 +26,25 @@ def parse_arguments():
     Parses arguments and makes you happy.
     """
     argparser = argparse.ArgumentParser(prog="code", description="Vision component of 2021 summerbot.")
-    argparser.add_argument("-g",
+    modegroup = argparser.add_argument_group('Mode Options', 'You must select one of the following options: ')
+    modegroup.add_argument("-t",
+                           "--test",
+                           metavar="IMAGE",
+                           help="Takes a photo as input and detects all of the aruco markers in the photo")
+    modegroup.add_argument("-g",
                            "--generate",                           
                            type=int, 
                            metavar="MARKER_ID", 
                            help="Generate an AruCo marker image using the given ID from 0-49.")
-    argparser.add_argument("-o", 
+    modegroup_2 = argparser.add_argument_group('Other Options')
+    modegroup_2.add_argument("-o", 
                            "--output",
                            default="aruco.png",
                            metavar="FILE_NAME",
                            help="This is to find out the name of the file which has the marker saved.")
     arg_list = argparser.parse_args()
     
-    if arg_list.generate:
+    if arg_list.generate is not None:
         if arg_list.generate >= 50 or arg_list.generate < 0:
             print(f"Error \"{arg_list.generate}\" is not in the suitable range: 0-49")
             exit(1)
