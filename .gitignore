@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Prevent AruCo images created in generation mode from sullying git status
+2021/raspberry-pi/*.png
