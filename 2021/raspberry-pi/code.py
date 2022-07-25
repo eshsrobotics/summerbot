@@ -99,16 +99,18 @@ def detect_all_markers(image_file_name, view_results: bool):
     copy_of_img = scale_image(copy_of_img, 0.33)
     corners, ids, rejectedImgpoints = aruco.detectMarkers(copy_of_img, ARU_DICT, parameters=ARU_PARAM)
 
-    cv.aruco.drawDetectedMarkers(copy_of_img, corners, ids)
+    if len(ids) > 0:
+        cv.aruco.drawDetectedMarkers(copy_of_img, corners, ids)
 
-    print(f"Marker IDs detected: {ids}")
-    for i, corner in enumerate(corners):
-        print(f"Marker {i}:")
-        for point in corner:
-            print(f"Corner {i}: x={point[0]}, y={point[1]}")
+        print(f"Marker IDs detected: {ids}")
+        for i, corner in enumerate(corners):
+            print(f"Marker {i}:")
+            for point in corner:
+                print(f"Corner {i}: x={point[0]}, y={point[1]}")
 
     if view_results:
         cv.imshow("string", copy_of_img)
+        # cv.imwrite("aruco-detected-markers.png", copy_of_img)
         cv.waitKey(0)
         cv.destroyAllWindows()
 
@@ -132,6 +134,40 @@ def scale_image(img, scale_factor):
 
     print(f"Modified dimensions: {img.shape[1]} x {img.shape[0]}")
     return final_img
+
+
+def calibrate_camera(image_list):
+    """
+    In order to obtain 3D coordinates from a 2D image using
+    cv.aruco.estimatePoseSingleMarkers(), the camera must first be calibrated
+    (see [1] for an explanation of why and [2] for an explanation of how.)
+    There are a number of ways to do this; the preferred method for OpenCV
+    ArUco appears to be through the use of a checkerboard pattern of ArUco
+    markers called a "ChArUco board" (see [3] for creation methods and [4] for
+    calibration instructions.)
+
+    This function handles that process.  It takes as an argument a list of
+    images -- the more, the better apparently? -- which should all be
+    photographs of the same printed ChArUco broad from different angles.  It
+    will then call cv.aruco.detectMarkers() on each input image and gather the
+    results together before performing one final calibration.
+
+    Arguments:
+    - image_list: A list of OpenCV images (matrices) representing photographs
+                  loaded from disk or from a video feed.
+
+    Returns:
+      Returns a 2-tuple of (cameraMatrix, distCoeffs) matrices that can then
+      be used for pose estimation with *this* camera using its current focal
+      parameters.  These shouldn't need recalibration unless the camera's
+      focal settings change.
+
+    [1] https://stackoverflow.com/a/53372068
+    [2] https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
+    [3] https://docs.opencv.org/3.4/df/d4a/tutorial_charuco_detection.html
+    [4] https://docs.opencv.org/3.4/da/d13/tutorial_aruco_calibration.html
+    """
+    pass
 
 
 if __name__ == "__main__":
