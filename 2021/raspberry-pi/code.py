@@ -69,14 +69,39 @@ def detect_all_markers(image_file_name):
     """
     Detects all the AruCo markers in the image, and returns the Marker ID and also the 
     three-dimensional space of the marker.
-    """
-    # Select a marker from the predefined dictionary and save it to a file.
-
+    """ 
     img = cv.imread(image_file_name)
-
     corners, ids, rejectedImgpoints = aruco.detectMarkers(img, ARU_DICT, parameters=ARU_PARAM)
+    
+    copy_of_img = img.copy()
+    scale_image(copy_of_img, 0.1)
+    cv.aruco.drawDetectedMarkers(copy_of_img, corners, ids)
+    cv.imshow("string", copy_of_img)
+    cv.waitKey(0)
+    
 
     print(f"Marker IDs detected: {ids}")
+    
+def scale_image(img, scale_factor):
+    width = img.shape[1]
+    height = img.shape[0]
+    print(f"Original dimensions: {width} x {height}")
+    new_width = int(width * scale_factor)
+    new_height = int(height * scale_factor)
+    print(f"New dimensions: {new_width} x {new_height}")
+    
+    # Bug: We expected this function to change the dimensions of the
+    # input image (img.shape[].)  It turns out that the dimensions are
+    # not being modified, so the displayed image is still too large.  This
+    # is not acceptable, and we don't know why this is happening yet.
+    #
+    # References: https://www.tutorialkart.com/opencv/python/opencv-python-resize-image/    
+    cv.resize(img, (new_width, new_height), dst=img, interpolation=cv.INTER_AREA)
+
+    print(f"Modified dimensions: {img.shape[1]} x {img.shape[0]}")
+    
+    
+    
 
 if __name__ == "__main__":
     parse_arguments()
