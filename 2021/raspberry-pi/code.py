@@ -2,6 +2,8 @@
 
 # This is the driver for the vision solution code for the summmerbot.
 import argparse
+import sys
+
 import numpy as np
 import cv2 as cv
 
@@ -26,9 +28,14 @@ def parse_arguments():
                            help="Takes a photo as input and detects all of the aruco markers in the photo")
     modegroup.add_argument("-g",
                            "--generate",
-                           type=int,
-                           metavar="MARKER_ID",
-                           help="Generate an AruCo marker image using the given ID from 0-49.")
+                           type=str,
+                           metavar="MARKER | \"board\"",
+                           help="Generate an AruCo marker image using the given ID from 0-49, or generates a ChArUco board.")
+    modegroup.add_argument("-c",
+                           "--calibrate",
+                           nargs='+',
+                           metavar="PHOTO",
+                           help="Generates camera calibration data based on one or more ChArUco board photos.")
     modegroup_2 = argparser.add_argument_group('Other Options')
     modegroup_2.add_argument("-o",
                            "--output",
@@ -38,24 +45,34 @@ def parse_arguments():
     arg_list = argparser.parse_args()
 
     if arg_list.generate is not None:
-
-        # Generate mode.
-        if arg_list.generate >= 50 or arg_list.generate < 0:
-            print(f"Error \"{arg_list.generate}\" is not in the suitable range: 0-49")
+        if arg_list.generate == "board":
+            print("Generating ChArUco")
+            ROWS = 8
+            COLUMNS = 8
+            MARKER_LENGTH = 0.7
+            SIDE_LENGTH = 1.2
+            WIDTH_PIXELS = 900
+            HEIGHT_PIXELS = 900
+            charuco_board = cv.aruco.CharucoBoard_create(COLUMNS, ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+            board_img = charuco_board.draw((WIDTH_PIXELS, HEIGHT_PIXELS))
+            cv.imwrite(arg_list.output, board_img)
+        else:
+            value = int(arg_list.generate) # TODO: Handle Parse Errors.
+            if value >= 50 or value < 0:
+                print(f"Error \"{value}\" is not in the suitable range: 0-49")
             exit(1)
-        generate_aruco_marker(marker_id=arg_list.generate,
-                              file_name=arg_list.output)
+            generate_aruco_marker(marker_id=value, file_name=arg_list.output)
         print(f"Wrote \"{arg_list.output}\"")
 
     elif arg_list.test is not None:
-
-        # Test mode.
-        detect_all_markers(arg_list.test, view_results=True)
-
-    if arg_list.generate is None and arg_list.output:
-        print("Error: -o is not valid unless -g is present")
-        exit(1)
-
+        detect_all_markers(arg_list.test)
+    else:
+        # -g was not passed in, so -o is an error.
+        # if arg_list.output:
+        #     print("Error: -o is not valid unless -g is present")
+        #     exit(1)
+        print("Error: You must pass in at least one of these three arguments: -t, -r, or -g.")
+        print(f"Execute {sys.argv[0]} --help for more information.")
 
 def generate_aruco_marker(marker_id, file_name):
     """
