@@ -7,13 +7,17 @@ import sys
 import numpy as np
 import cv2 as cv
 
-ARU_PIXEL_SIZE = 300                               # This number is the size of the marker image in pixels.
-ARU_BORDER_WIDTH = 1                               # This is the width of the border (TODO: is this in pixels or grid cells?)
-ARU_DICT = aruco.Dictionary_get(aruco.DICT_4X4_50) # In order for aruco to work, we need to find the predefined dictionary.
-ARU_PARAM = aruco.DetectorParameters_create()
+ARU_PIXEL_SIZE = 300
+ARU_BORDER_WIDTH = 1
+ARU_PARAM = cv.aruco.DetectorParameters_create()
 
-# px = img [0,0]
-# print(px)
+# Chooses the dictionary we use.
+#
+# The ArUco algorithm can only recognize images from a finite "lexicon" of
+# markers, usually consisting of 50, 100, or 250 images.  The lexicon you
+# choose is up to you, and custom dictionaries are possible if you generate
+# them carefully.
+ARU_DICT = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_50)
 
 
 def parse_arguments():
@@ -38,10 +42,10 @@ def parse_arguments():
                            help="Generates camera calibration data based on one or more ChArUco board photos.")
     modegroup_2 = argparser.add_argument_group('Other Options')
     modegroup_2.add_argument("-o",
-                           "--output",
-                           default="aruco.png",
-                           metavar="FILE_NAME",
-                           help="This is to find out the name of the file which has the marker saved.")
+                             "--output",
+                             default="aruco.png",
+                             metavar="FILE_NAME",
+                             help="This is to find out the name of the file which has the marker saved.")
     arg_list = argparser.parse_args()
 
     if arg_list.generate is not None:
@@ -49,15 +53,13 @@ def parse_arguments():
             print("Generating ChArUco")
             ROWS = 8
             COLUMNS = 8
-            MARKER_LENGTH = 0.7
-            SIDE_LENGTH = 1.2
             WIDTH_PIXELS = 900
             HEIGHT_PIXELS = 900
-            charuco_board = cv.aruco.CharucoBoard_create(COLUMNS, ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+            charuco_board = generate_charuco_board(ROWS, COLUMNS)
             board_img = charuco_board.draw((WIDTH_PIXELS, HEIGHT_PIXELS))
             cv.imwrite(arg_list.output, board_img)
         else:
-            value = int(arg_list.generate) # TODO: Handle Parse Errors.
+            value = int(arg_list.generate)  # TODO: Handle Parse Errors.
             if value >= 50 or value < 0:
                 print(f"Error \"{value}\" is not in the suitable range: 0-49")
             exit(1)
@@ -73,6 +75,7 @@ def parse_arguments():
         #     exit(1)
         print("Error: You must pass in at least one of these three arguments: -t, -r, or -g.")
         print(f"Execute {sys.argv[0]} --help for more information.")
+
 
 def generate_aruco_marker(marker_id, file_name):
     """
@@ -114,7 +117,10 @@ def generate_charuco_board(rows, columns):
     """
 
     # See https://docs.opencv.org/3.4/df/d4a/tutorial_charuco_detection.html.
-    return cv.aruco.CharucoBoard.create(columns, rows, 1.0, 0.7, ARU_DICT)
+    MARKER_LENGTH = 0.7
+    SIDE_LENGTH = 1.2
+    charuco_board = cv.aruco.CharucoBoard_create(columns, rows, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+    return charuco_board
 
 
 def detect_all_markers(image_file_name, view_results: bool):
