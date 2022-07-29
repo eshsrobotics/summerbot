@@ -2,6 +2,8 @@
 
 # This is the driver for the vision solution code for the summmerbot.
 import argparse
+import sys
+
 import numpy as np
 import cv2 as cv
 import cv2.aruco as aruco
@@ -49,9 +51,11 @@ def parse_arguments():
         detect_all_markers(arg_list.test)
     else:
         # -g was not passed in, so -o is an error.
-        if arg_list.output:
-            print("Error: -o is not valid unless -g is present")
-            exit(1)
+        # if arg_list.output:
+        #     print("Error: -o is not valid unless -g is present")
+        #     exit(1)
+        print("Error: You must pass in at least one of these three arguments: -t, -r, or -g.")
+        print(f"Execute {sys.argv[0]} --help for more information.")
 
 def generate_aruco_marker(marker_id, file_name):
     """
