@@ -4,7 +4,6 @@
 import argparse
 import numpy as np
 import cv2 as cv
-import cv2.aruco as aruco
 
 ARU_PIXEL_SIZE = 300                               # This number is the size of the marker image in pixels.
 ARU_BORDER_WIDTH = 1                               # This is the width of the border (TODO: is this in pixels or grid cells?)
@@ -39,19 +38,23 @@ def parse_arguments():
     arg_list = argparser.parse_args()
 
     if arg_list.generate is not None:
+
+        # Generate mode.
         if arg_list.generate >= 50 or arg_list.generate < 0:
             print(f"Error \"{arg_list.generate}\" is not in the suitable range: 0-49")
             exit(1)
-        generate_aruco_marker(marker_id=arg_list.generate, file_name=arg_list.output)
+        generate_aruco_marker(marker_id=arg_list.generate,
+                              file_name=arg_list.output)
         print(f"Wrote \"{arg_list.output}\"")
 
     elif arg_list.test is not None:
+
+        # Test mode.
         detect_all_markers(arg_list.test, view_results=True)
-    else:
-        # -g was not passed in, so -o is an error.
-        if arg_list.output:
-            print("Error: -o is not valid unless -g is present")
-            exit(1)
+
+    if arg_list.generate is None and arg_list.output:
+        print("Error: -o is not valid unless -g is present")
+        exit(1)
 
 
 def generate_aruco_marker(marker_id, file_name):
@@ -68,6 +71,33 @@ def generate_aruco_marker(marker_id, file_name):
     # Writing the image for disk.
     marker_image = aruco.drawMarker(ARU_DICT, marker_id, ARU_PIXEL_SIZE)
     cv.imwrite(file_name, marker_image)
+
+
+def generate_charuco_board(rows, columns):
+    """
+    Creates an image (a matrix) that represents a ChArUco board: a
+    black-and-white checkerboard pattern which places ArUco markers in the
+    white squares.  These patterns provide a higher degree of precision than
+    ordinary checkerboard patterns (which can be spatially positioned
+    precisely, but are prone to occlusion) and ArUco markers (which are
+    resistant to occlusion, but have trouble with precise spatial positioning
+    of their corners.)
+
+    A ChArUco board provides sufficient accuracy to make them suitable for
+    camera calibration; see the calibrate_camera() function for more
+    information.
+
+    Arguments:
+    - rows: The number of rows that should be in the checkerboard.
+    - columns: The number of columns that should be in the checkerboard.
+
+    Returns:
+      Returns a black-and-white image containing the desired board.  It will
+      contain a number of marker IDs from ARU_DICT.
+    """
+
+    # See https://docs.opencv.org/3.4/df/d4a/tutorial_charuco_detection.html.
+    return cv.aruco.CharucoBoard.create(columns, rows, 1.0, 0.7, ARU_DICT)
 
 
 def detect_all_markers(image_file_name, view_results: bool):
