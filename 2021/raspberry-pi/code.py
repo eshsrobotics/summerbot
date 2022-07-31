@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # This is the driver for the vision solution code for the summmerbot.
+import os.path
 import argparse
 import sys
 
@@ -36,6 +37,10 @@ def calibrate(charuco_photo_list):
     
     for i in range(len(charuco_photo_list)):
         photo_file_name = charuco_photo_list[i]
+        if not os.path.exists(photo_file_name):
+            print(f"Error: \"{photo_file_name}\" does not exist.")
+            continue
+        
         photo = cv.imread(photo_file_name)
         
         # Convert the photo to grayscale.
