@@ -43,7 +43,6 @@ def parse_arguments():
     modegroup_2 = argparser.add_argument_group('Other Options')
     modegroup_2.add_argument("-o",
                              "--output",
-                             default="aruco.png",
                              metavar="FILE_NAME",
                              help="This is to find out the name of the file which has the marker saved.")
     arg_list = argparser.parse_args()
@@ -57,12 +56,16 @@ def parse_arguments():
             HEIGHT_PIXELS = 900
             charuco_board = generate_charuco_board(ROWS, COLUMNS)
             board_img = charuco_board.draw((WIDTH_PIXELS, HEIGHT_PIXELS))
+            if not arg_list.output:
+                arg_list.output = "charuco.png"
             cv.imwrite(arg_list.output, board_img)
         else:
             value = int(arg_list.generate)  # TODO: Handle Parse Errors.
             if value >= 50 or value < 0:
                 print(f"Error \"{value}\" is not in the suitable range: 0-49")
-            exit(1)
+                exit(1)
+            if not arg_list.output:
+                arg_list.output = "aruco.png"
             generate_aruco_marker(marker_id=value, file_name=arg_list.output)
         print(f"Wrote \"{arg_list.output}\"")
 
@@ -89,7 +92,7 @@ def generate_aruco_marker(marker_id, file_name):
                  it.
     """
     # Writing the image for disk.
-    marker_image = aruco.drawMarker(ARU_DICT, marker_id, ARU_PIXEL_SIZE)
+    marker_image = cv.aruco.drawMarker(ARU_DICT, marker_id, ARU_PIXEL_SIZE)
     cv.imwrite(file_name, marker_image)
 
 
