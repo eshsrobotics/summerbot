@@ -45,7 +45,7 @@ appears to be:
                                             image=gray,
                                             board=CHARUCO_BOARD)
         ```
-    5. Use the corner count to determine if the photo is a valid photo of a ChArUco board
+    5. Use the corner count to determine if the photo is a valid photo of a ChArUco.
         ```python
         if corner_count > CHARUCO_THRESHOLD:
         ```

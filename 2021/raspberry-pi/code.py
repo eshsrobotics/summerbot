@@ -24,8 +24,39 @@ CHARUCO_ROWS = 8
 CHARUCO_COLUMNS = 8
 CHARUCO_THRESHOLD = int((CHARUCO_COLUMNS * CHARUCO_ROWS)/2 * 0.60)
 
-# px = img [0,0]
-# print(px)
+def calibrate(charuco_photo_list):
+    """
+    Calibrates your camera. Meaning? Meaning we return two matrices: the distCoeffs, which is short 
+    for distortionCoefficionts, and the cameraMatrix. We do this by utilizing a series of photos.
+    These photos were passed into the function, and each of them must contain a ChArUco board generated
+    by the -g board.
+    """
+    allCharucoCorners = []
+    allCharucoIds = []
+    
+    for i in range(len(charuco_photo_list)):
+        photo_file_name = charuco_photo_list[i]
+        photo = cv.imread(photo_file_name)
+        
+        # Convert the photo to grayscale.
+        gray = cv.cvtColor(photo, cv.COLOR_BGR2GRAY)
+        
+        # Detect all the ArUco markers in the grayscale ChArUco image.
+        corners, ids, rejectedImgpoints = aruco.detectMarkers(gray, ARU_DICT, parameters=ARU_PARAM)
+        
+        # Obtain the ChArUco boards using embedded AruCo board corners.
+        corner_count, charuco_corners, charuco_ids = \
+            aruco.interpolateCornersCharuco(markerCorners=corners,
+                                            markerIds=ids,
+                                            image=gray,
+                                            board=get_charuco_board())
+        
+        # Use the corner count to determine if the photo is a valid photo of a ChArUco board.
+        if corner_count > CHARUCO_THRESHOLD:
+            print(f"\"{photo_file_name}\" is valid. (count = {corner_count})")
+        else:
+            print(f"\"{photo_file_name}\" is not valid. (count = {corner_count})")
+
 
 def parse_arguments():
     """
@@ -58,11 +89,7 @@ def parse_arguments():
     if arg_list.generate is not None:
         if arg_list.generate == "board":
             print("Generating ChArUco")
-            MARKER_LENGTH = 0.7
-            SIDE_LENGTH = 1.2
-            WIDTH_PIXELS = 900
-            HEIGHT_PIXELS = 900
-            charuco_board = cv.aruco.CharucoBoard_create(CHARUCO_COLUMNS, CHARUCO_ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+            charuco_board = get_charuco_board()
             board_img = charuco_board.draw((WIDTH_PIXELS, HEIGHT_PIXELS))
             cv.imwrite(arg_list.output, board_img)
         else:
@@ -75,6 +102,8 @@ def parse_arguments():
     
     elif arg_list.test is not None:
         detect_all_markers(arg_list.test)
+    elif arg_list.calibrate is not None:
+        calibrate(arg_list.calibrate)
     else:
         # -g was not passed in, so -o is an error.
         # if arg_list.output:
@@ -130,8 +159,13 @@ def scale_image(img, scale_factor):
 
     print(f"Modified dimensions: {img.shape[1]} x {img.shape[0]}")
     
-    
-    
+def get_charuco_board():
+    MARKER_LENGTH = 0.7
+    SIDE_LENGTH = 1.2
+    WIDTH_PIXELS = 900
+    HEIGHT_PIXELS = 900
+    charuco_board = cv.aruco.CharucoBoard_create(CHARUCO_COLUMNS, CHARUCO_ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+    return charuco_board
 
 if __name__ == "__main__":
     parse_arguments()
