@@ -10,9 +10,19 @@ import cv2.aruco as aruco
 
 ARU_PIXEL_SIZE = 300  # This number is the size of the marker image in pixels.
 ARU_BORDER_WIDTH = 1 # This is the width of the border (TODO: is this in pixels or grid cells?)
+
 # In order for aruco to work, we need to find the predefined dictionary.
 ARU_DICT = aruco.Dictionary_get(aruco.DICT_4X4_50)
 ARU_PARAM = aruco.DetectorParameters_create()
+
+# The dimensions for the ChArUco Boards.
+#
+# Also used to determine if there are enough Aruco squares in an image of a
+# ChArUco Board for it to be valid.  There are R * C squares in the checkerboard,
+# and half of them -- the white ones -- contain ArUco markers.
+CHARUCO_ROWS = 8
+CHARUCO_COLUMNS = 8
+CHARUCO_THRESHOLD = int((CHARUCO_COLUMNS * CHARUCO_ROWS)/2 * 0.60)
 
 # px = img [0,0]
 # print(px)
@@ -48,13 +58,11 @@ def parse_arguments():
     if arg_list.generate is not None:
         if arg_list.generate == "board":
             print("Generating ChArUco")
-            ROWS = 8
-            COLUMNS = 8
             MARKER_LENGTH = 0.7
             SIDE_LENGTH = 1.2
             WIDTH_PIXELS = 900
             HEIGHT_PIXELS = 900
-            charuco_board = cv.aruco.CharucoBoard_create(COLUMNS, ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
+            charuco_board = cv.aruco.CharucoBoard_create(CHARUCO_COLUMNS, CHARUCO_ROWS, SIDE_LENGTH, MARKER_LENGTH, ARU_DICT)
             board_img = charuco_board.draw((WIDTH_PIXELS, HEIGHT_PIXELS))
             cv.imwrite(arg_list.output, board_img)
         else:
