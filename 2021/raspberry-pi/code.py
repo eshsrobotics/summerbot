@@ -48,7 +48,20 @@ def calibrate(charuco_photo_list):
         
         # Detect all the ArUco markers in the grayscale ChArUco image.
         corners, ids, rejectedImgpoints = aruco.detectMarkers(gray, ARU_DICT, parameters=ARU_PARAM)
-        
+
+        # (TODO: Find out what this thing does.)
+
+        cv.aruco.interpolateCornersCharuco
+
+
+
+        # Draw all ArUco markers identified in the ChAruCo board.
+        cv.aruco.drawDetectedMarkers(photo, corners, ids)
+        photo_with_markers = cv.resize(photo, (int(photo.shape[1]/3), int(photo.shape[0]/3)), interpolation=cv.INTER_AREA)
+        cv.imshow("photo_ids", photo_with_markers)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
         # Obtain the ChArUco boards using embedded AruCo board corners.
         corner_count, charuco_corners, charuco_ids = \
             aruco.interpolateCornersCharuco(markerCorners=corners,
@@ -142,7 +155,7 @@ def detect_all_markers(image_file_name):
     cv.aruco.drawDetectedMarkers(copy_of_img, corners, ids)
     cv.imshow("string", copy_of_img)
     cv.waitKey(0)
-    
+    cv.destroyAllWindows()
 
     print(f"Marker IDs detected: {ids}")
     
