@@ -28,12 +28,19 @@ CHARUCO_THRESHOLD = int((CHARUCO_COLUMNS * CHARUCO_ROWS)/2 * 0.60)
 def calibrate(charuco_photo_list):
     """
     Calibrates your camera. Meaning? Meaning we return two matrices: the distCoeffs, which is short 
-    for distortionCoefficionts, and the cameraMatrix. We do this by utilizing a series of photos.
+    for distortionCoefficients, and the cameraMatrix. We do this by utilizing a series of photos.
     These photos were passed into the function, and each of them must contain a ChArUco board generated
     by the -g board.
+    
+    Please note that most of the information listed above came from this URL: 
+    https://docs.opencv.org/3.4/df/d4a/tutorial_charuco_detection.html
     """
+    # Need to accumulate the instersections (CharcoCorners) and the 
+    # ids of those intersections (CharucoIds) in order to feed the data
+    # into calibrateCharucoCorners().
     allCharucoCorners = []
     allCharucoIds = []
+    board = get_charuco_board()
     
     for i in range(len(charuco_photo_list)):
         photo_file_name = charuco_photo_list[i]
@@ -47,35 +54,39 @@ def calibrate(charuco_photo_list):
         gray = cv.cvtColor(photo, cv.COLOR_BGR2GRAY)
         
         # Detect all the ArUco markers in the grayscale ChArUco image.
-        corners, ids, rejectedImgpoints = aruco.detectMarkers(gray, ARU_DICT, parameters=ARU_PARAM)
+        corners, ids, rejectedImgpoints = aruco.detectMarkers(gray, 
+                                                              ARU_DICT, 
+                                                              parameters=ARU_PARAM)
+                                                              
+        # Get the corners of the big charuco board(s) using interpolation.
+        
+        _, charucoCorners, charucoIds = \
+            cv.aruco.interpolateCornersCharuco(markerCorners=corners, 
+                                               markerIds=ids,
+                                               image=gray,
+                                               board=board)
+        if charucoCorners is not None and charucoIds is not None:
+            allCharucoCorners.append(charucoCorners)
+            allCharucoIds.append(charucoIds)
 
-        # (TODO: Find out what this thing does.)
-
-        cv.aruco.interpolateCornersCharuco
-
-
-
+                                               
+        # Determines if ChArUco board has valid 3-dimensional position information.
+        valid, rvec, tvec = cv.aruco.estimatePoseCharucoBoard(charucoCorners, 
+                                                              charucoIds, 
+                                                              board,
+                                                              )
+        
         # Draw all ArUco markers identified in the ChAruCo board.
         cv.aruco.drawDetectedMarkers(photo, corners, ids)
-        photo_with_markers = cv.resize(photo, (int(photo.shape[1]/3), int(photo.shape[0]/3)), interpolation=cv.INTER_AREA)
+        photo_with_markers = cv.resize(photo, 
+                                       (int(photo.shape[1]/3), int(photo.shape[0]/3)), 
+                                       interpolation=cv.INTER_AREA)
         cv.imshow("photo_ids", photo_with_markers)
         cv.waitKey(0)
         cv.destroyAllWindows()
-
-        # Obtain the ChArUco boards using embedded AruCo board corners.
-        corner_count, charuco_corners, charuco_ids = \
-            aruco.interpolateCornersCharuco(markerCorners=corners,
-                                            markerIds=ids,
-                                            image=gray,
-                                            board=get_charuco_board())
-        
-        # Use the corner count to determine if the photo is a valid photo of a ChArUco board.
-        if corner_count > CHARUCO_THRESHOLD:
-            print(f"\"{photo_file_name}\" is valid. (count = {corner_count})")
-        else:
-            print(f"\"{photo_file_name}\" is not valid. (count = {corner_count})")
-
-
+    pass
+    cv.aruco.calibrateCameraCharuco(allCharucoCorners, allCharucoIds, board, )
+    
 def parse_arguments():
     """
     Parses arguments and makes you happy.
@@ -127,7 +138,7 @@ def parse_arguments():
         # if arg_list.output:
         #     print("Error: -o is not valid unless -g is present")
         #     exit(1)
-        print("Error: You must pass in at least one of these three arguments: -t, -r, or -g.")
+        print("Error: You must pass in at least one of these four arguments: -t, -r, -g, or -c.")
         print(f"Execute {sys.argv[0]} --help for more information.")
 
 def generate_aruco_marker(marker_id, file_name):
