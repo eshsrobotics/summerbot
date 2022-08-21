@@ -41,6 +41,7 @@ def calibrate(charuco_photo_list):
     allCharucoCorners = []
     allCharucoIds = []
     board = get_charuco_board()
+    photo_dimensions = None
     
     for i in range(len(charuco_photo_list)):
         photo_file_name = charuco_photo_list[i]
@@ -71,10 +72,10 @@ def calibrate(charuco_photo_list):
 
                                                
         # Determines if ChArUco board has valid 3-dimensional position information.
-        valid, rvec, tvec = cv.aruco.estimatePoseCharucoBoard(charucoCorners, 
-                                                              charucoIds, 
-                                                              board,
-                                                              )
+        # valid, rvec, tvec = cv.aruco.estimatePoseCharucoBoard(charucoCorners, 
+                                                              # charucoIds, 
+                                                              # board,
+                                                              # )
         
         # Draw all ArUco markers identified in the ChAruCo board.
         cv.aruco.drawDetectedMarkers(photo, corners, ids)
@@ -84,9 +85,26 @@ def calibrate(charuco_photo_list):
         cv.imshow("photo_ids", photo_with_markers)
         cv.waitKey(0)
         cv.destroyAllWindows()
-    pass
-    cv.aruco.calibrateCameraCharuco(allCharucoCorners, allCharucoIds, board, )
+        
+        if i == 0:
+            photo_dimensions = gray.shape
     
+    print(photo_dimensions)
+    
+    # Get the distCoeffs and the cameraMatrix.
+    print(f"The length of the charucoCorners is: {len(allCharucoCorners)}")
+    print(f"The length of the charucoIds is: {len(allCharucoIds)}")
+    _, cameraMatrix, distCoeffs, _, _ = \
+        cv.aruco.calibrateCameraCharuco(allCharucoCorners, 
+                                        allCharucoIds, 
+                                        board, 
+                                        photo_dimensions, 
+                                        None, 
+                                        None)
+    print(f"cameraMatrix={cameraMatrix}distCoeffs={cameraMatrix}")
+     
+ 
+        
 def parse_arguments():
     """
     Parses arguments and makes you happy.
