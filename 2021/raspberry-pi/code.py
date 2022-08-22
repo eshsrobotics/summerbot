@@ -43,6 +43,13 @@ def calibrate(charuco_photo_list):
     board = get_charuco_board()
     photo_dimensions = None
     
+    # We need to display _an_ image at the end of this function call.  However,
+    # more than one function could have been passed into us through the 
+    # charuco_photo_list.  So _for now_, we concentrate on rendering all the
+    # marker metadata on the first image that we receive.  The others can wait.  :).
+    IMAGE_INDEX_TO_DISPLAY = 0
+    scratch_image = cv.imread(charuco_photo_list[IMAGE_INDEX_TO_DISPLAY])
+    
     for i in range(len(charuco_photo_list)):
         photo_file_name = charuco_photo_list[i]
         if not os.path.exists(photo_file_name):
@@ -70,27 +77,14 @@ def calibrate(charuco_photo_list):
             allCharucoCorners.append(charucoCorners)
             allCharucoIds.append(charucoIds)
 
-                                               
-        # Determines if ChArUco board has valid 3-dimensional position information.
-        # valid, rvec, tvec = cv.aruco.estimatePoseCharucoBoard(charucoCorners, 
-                                                              # charucoIds, 
-                                                              # board,
-                                                              # )
-        
         # Draw all ArUco markers identified in the ChAruCo board.
-        cv.aruco.drawDetectedMarkers(photo, corners, ids)
-        photo_with_markers = cv.resize(photo, 
-                                       (int(photo.shape[1]/3), int(photo.shape[0]/3)), 
-                                       interpolation=cv.INTER_AREA)
-        cv.imshow("photo_ids", photo_with_markers)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        
+        cv.aruco.drawDetectedMarkers(scratch_image, corners, ids)
+
         if i == 0:
             photo_dimensions = gray.shape
     
     print(photo_dimensions)
-    
+       
     # Get the distCoeffs and the cameraMatrix.
     print(f"The length of the charucoCorners is: {len(allCharucoCorners)}")
     print(f"The length of the charucoIds is: {len(allCharucoIds)}")
@@ -103,7 +97,26 @@ def calibrate(charuco_photo_list):
                                         None)
     print(f"cameraMatrix={cameraMatrix}distCoeffs={cameraMatrix}")
      
+    # Determines if ChArUco board has valid 3-dimensional position information.
+    valid, rvec, tvec = cv.aruco.estimatePoseCharucoBoard(charucoCorners, 
+                                                          charucoIds, 
+                                                          board,
+                                                          cameraMatrix,
+                                                          distCoeffs,
+                                                          None,
+                                                          None)
+    print(f"Valid {'is' if valid is True else 'is not'} true.")
  
+    # Display the aruco markers within the ChArUco board embedded within the first image in our list.
+    # This helps provide visual confirmation of the calibration process.
+    photo_with_markers = cv.resize(scratch_image, 
+                                   (int(scratch_image.shape[1]/3), int(scratch_image.shape[0]/3)), 
+                                   interpolation=cv.INTER_AREA)
+
+    cv.imshow("photo_ids", photo_with_markers)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+    
         
 def parse_arguments():
     """
